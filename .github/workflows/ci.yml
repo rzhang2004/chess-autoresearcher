@@ -1,0 +1,31 @@
+name: smoke-test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run smoke test
+        run: python test_engine.py
+
+      - name: Run a tiny regression match (4 games, fast)
+        run: |
+          python evaluator.py --mode sunfish_vs_random \
+            --n-games 4 --time-per-move 0.02 \
+            --opening-plies 2 --move-limit 60 \
+            --seed 9999 --log-dir /tmp/ci_logs --csv /tmp/ci_results.csv \
+            --notes "ci"

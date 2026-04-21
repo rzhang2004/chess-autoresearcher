@@ -1,0 +1,13 @@
+# best_config.yaml — The best configuration found so far.
+#
+# Week 2 status: no improvements attempted yet. The baseline is itself the
+# current best. When search.py (Week 3) promotes a candidate, it rewrites
+# this file.
+
+label: sunfish_baseline
+protocol_version: v1-2026-04
+win_rate_vs_baseline_pct: 54.0    # Week 2 mirror match, 50 games, seed=2026
+avg_sec_per_move: 0.214           # mirror-match average (A side)
+config_overrides: {}              # empty overrides = use config.py defaults
+week2_baseline_vs_random_win_pct: 99.0
+week2_mirror_white_win_pct: 48.0  # harness symmetry check; ≈50% expected

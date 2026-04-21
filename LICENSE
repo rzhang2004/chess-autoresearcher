@@ -1,0 +1,41 @@
+SPDX-License-Identifier: GPL-3.0-or-later
+
+chess-autoresearcher — Constrained AutoResearch loop for a lightweight Python chess engine
+Copyright (C) 2026 Ray Zhang
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+============================================================================
+ATTRIBUTION
+============================================================================
+
+The `engine.py` module is a reconstruction of Thomas Dybdahl Ahle's Sunfish
+chess engine (https://github.com/thomasahle/sunfish), which is itself
+distributed under the GPL. This project inherits the GPL-3.0-or-later license
+on that basis.
+
+============================================================================
+ACTION REQUIRED BEFORE PUBLICATION
+============================================================================
+
+This file currently contains only the GPL-3.0 short-form notice. Before
+publishing this repository publicly, replace everything below this line with
+the full text of the GNU General Public License version 3, available at:
+
+    https://www.gnu.org/licenses/gpl-3.0.txt
+
+or by selecting the "GNU GPL v3" template when creating the GitHub repo via
+https://github.com/new. GitHub will insert the canonical full text for you.
+
+----------------------------------------------------------------------------
