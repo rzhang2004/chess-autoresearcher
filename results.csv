@@ -1,3 +1,13 @@
 timestamp,protocol_version,label_a,label_b,n_games,time_per_move,opening_plies,move_limit,seed,a_wins,b_wins,draws,a_win_rate_pct,avg_plies,a_avg_sec_per_move,b_avg_sec_per_move,a_max_sec_per_move,b_max_sec_per_move,wall_seconds,notes
 2026-04-17 09:30:54,v1-2026-04,sunfish_baseline,random,50,0.1,4,200,2026,49,0,1,99.0,32.8,0.1732,0.0004,1.2197,0.0011,123.51,week2_baseline_sanity
 2026-04-17 09:50:00,v1-2026-04,sunfish_baseline,sunfish_baseline_mirror,50,0.1,4,200,2026,17,13,20,54.0,109.3,0.217,0.2099,128.5938,62.2434,1133.19,week2_baseline_mirror_match
+2026-04-23 21:37:11,v1-2026-04,candidate_20260423-212319,sunfish_baseline,50,0.1,4,200,2028,14,16,20,48.0,100.5,0.174,0.1751,3.6313,1.2413,832.84,iteration=1 exp=pst_scale_1.15 status=DISCARD
+2026-04-23 22:07:00,v1-2026-04,candidate_20260423-213711,sunfish_baseline,50,0.1,4,200,2029,19,15,16,54.0,124.2,0.3544,0.2064,376.905,29.1702,1788.67,iteration=2 exp=qs_limit_100 status=DISCARD
+2026-04-23 22:25:32,v1-2026-04,candidate_20260423-220700,sunfish_baseline,50,0.1,4,200,2030,10,22,18,38.0,127.3,0.1794,0.1846,0.9956,3.1428,1111.7,iteration=3 exp=minor_pieces_boosted status=DISCARD
+2026-04-23 22:43:49,v1-2026-04,candidate_20260423-222532,sunfish_baseline,50,0.1,4,200,2031,16,17,17,49.0,121.4,0.1906,0.1837,9.1441,1.7497,1096.7,iteration=4 exp=eval_roughness_7 status=DISCARD
+2026-04-23 23:04:48,v1-2026-04,candidate_20260423-224349,sunfish_baseline,50,0.1,4,200,2032,18,16,16,52.0,110.1,0.2705,0.1933,172.9681,13.2168,1258.75,iteration=5 exp=mvv_lva_ordering status=DISCARD
+2026-04-23 23:24:52,v1-2026-04,candidate_20260423-230605,sunfish_baseline,50,0.1,4,200,2033,19,15,16,54.0,117.0,0.2132,0.1879,33.1829,15.9247,1127.18,iteration=6 exp=qs_limit_150 status=DISCARD
+2026-04-23 23:40:12,v1-2026-04,candidate_20260423-232452,sunfish_baseline,50,0.1,4,200,2034,9,14,27,45.0,103.9,0.1804,0.1894,1.2424,1.4722,920.2,iteration=7 exp=pst_scale_0.9 status=DISCARD
+2026-04-24 00:00:54,v1-2026-04,candidate_20260423-234012,sunfish_baseline,50,0.1,4,200,2035,10,24,16,36.0,123.7,0.2358,0.1942,50.4026,13.4337,1241.37,iteration=8 exp=mvv_lva_qs170 status=DISCARD
+2026-04-24 00:20:42,v1-2026-04,candidate_20260424-000054,sunfish_baseline,50,0.1,4,200,2036,16,12,22,54.0,131.0,0.1946,0.177,49.2148,2.0601,1188.0,iteration=9 exp=rook_value_495 status=DISCARD
+2026-04-24 00:36:58,v1-2026-04,candidate_20260424-002042,sunfish_baseline,50,0.1,4,200,2037,15,14,21,51.0,103.1,0.2043,0.1841,55.2929,3.4728,976.12,iteration=10 exp=draw_test_false status=DISCARD
