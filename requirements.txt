@@ -1,9 +1,9 @@
-# Week 2 intentionally uses only the Python standard library.
-# No chess engine dependency is required: engine.py is a self-contained
-# Sunfish-equivalent implementation.
-#
-# Python >= 3.9 recommended.
-#
-# Optional extras a later week might add:
-#   - pyyaml       (if best_config.yaml becomes non-trivial)
-#   - matplotlib   (for plotting trends in Week 4)
+# Python >= 3.9 required.
+# No chess engine dependency: engine.py is a self-contained Sunfish equivalent.
+
+# Week 3: autoresearch loop (search.py)
+anthropic>=0.40.0
+
+# Optional (Week 4+):
+#   pyyaml      — if best_config.yaml grows complex
+#   matplotlib  — for plotting experiment trends

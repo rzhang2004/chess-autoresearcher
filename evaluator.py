@@ -125,7 +125,7 @@ def _is_insufficient_material(pos) -> bool:
 def _play_one_game(engine_white, engine_black, game_idx: int,
                    seed: int, time_per_move: float,
                    opening_plies: int, move_limit: int) -> GameResult:
-    rng = random.Random((seed, game_idx))
+    rng = random.Random(seed * 100_000 + game_idx)  # tuple seeds removed in Py3.12
     pos = _engine.starting_position()
     history = [pos]
     # The engines reset per game so they don't leak transposition state.
