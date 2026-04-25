@@ -1,19 +1,22 @@
 """
-run_5_iterations.py - Autoresearch iterations, round 2.
+run_5_iterations.py - Autoresearch round 3.
 
-Round 1 learnings:
-  - PST_SCALE=1.15 hurt (48%) - baseline PST weighting is already good
-  - QS_LIMIT=100 was closest but too slow (54%, 0.354s/move) - try 150
-  - N/B +20cp hurt badly (38%) - piece values are sensitive, use tiny deltas
-  - EVAL_ROUGHNESS=7 no help (49%) - current window fine
-  - MOVE_ORDERING=mvv_lva promising (52%) - try combining with other tweaks
+Lessons from rounds 1-2 (10 iterations, 0 KEEPs):
+  * 54% appears repeatedly (qs_limit_100/150, rook_value_495) - same as baseline
+    mirror match's A-side rate (17W-13L-20D = 54%); this is the noise floor.
+  * 50 games gives sigma ~ 7%, so 55% threshold is ~0.7sigma above 50% null;
+    distinguishing real signal from noise needs re-runs at different seeds.
+  * Combinations of two search-side changes (mvv_lva + qs170) backfired hard
+    (36%); pair changes that touch DIFFERENT mechanisms instead.
+  * PST_SCALE is symmetric bad (1.15 -> 48%, 0.9 -> 45%); skip.
+  * Large piece-value deltas hurt severely; use tiny deltas only.
 
-Round 2 experiments:
-  1. QS_LIMIT=150  - halfway between 219 and 100; some tactical depth, less slowdown
-  2. PST_SCALE=0.9 - less positional (opposite of round 1; 1.15 hurt so try other way)
-  3. mvv_lva + QS_LIMIT=170 - combine two near-misses at moderate settings
-  4. R=495 (+16cp)  - small rook boost; rooks undervalued in closed positions
-  5. DRAW_TEST=False - skip repetition detection in search; faster, may find more wins
+Round 3 plan: mix validation and refined exploration.
+  11. qs_limit_180         - round out QS curve (100, 150, 180)
+  12. mvv_lva_reseed       - re-test iter 5 (52%) at fresh seed (validate)
+  13. rook_value_490       - smaller rook bump (+11cp, not +16cp)
+  14. pawn_value_105       - untouched parameter; +5cp on pawns
+  15. combo_qs150_rook495  - stack two 54% candidates (different mechanisms)
 """
 
 from __future__ import annotations
@@ -38,7 +41,7 @@ from search import (
 
 RESULTS_CSV = str(REPO_ROOT / "results.csv")
 CONFIG_PY = REPO_ROOT / "config.py"
-EVAL_SEED_BASE = 2033  # continues from round 1 (which ended at 2032)
+EVAL_SEED_BASE = 2038  # round 2 ended at 2037
 
 
 def _run_evaluation(candidate_content, baseline_content, seed, verbose=True):
@@ -70,64 +73,68 @@ def main():
 
     experiments = [
         {
-            "name": "qs_limit_150",
+            "name": "qs_limit_180",
             "description": (
-                "QS_LIMIT 219 -> 150: moderate quiescence depth increase.\n"
-                "  Round 1: QS_LIMIT=100 got 54% but avg 0.354s/move (too slow).\n"
-                "  Hypothesis: 150 captures enough tactical depth without the speed hit."
+                "QS_LIMIT 219 -> 180: extend the QS sweet-spot search.\n"
+                "  Prior: qs=100 -> 54% (slow 0.354s/move); qs=150 -> 54% (0.213s/move).\n"
+                "  Hypothesis: 180 keeps most tactical benefit at lowest speed cost."
             ),
-            "replacements": [("QS_LIMIT = 219", "QS_LIMIT = 150")],
+            "replacements": [("QS_LIMIT = 219", "QS_LIMIT = 180")],
         },
         {
-            "name": "pst_scale_0.9",
+            "name": "mvv_lva_reseed",
             "description": (
-                "PST_SCALE 1.0 -> 0.9: reduce positional bonus weight 10%.\n"
-                "  Round 1: PST_SCALE=1.15 hurt (48%). Trying the opposite direction.\n"
-                "  Hypothesis: slightly less PST emphasis may improve material-first play."
+                "MOVE_ORDERING='mvv_lva' re-test at fresh seed (validation run).\n"
+                "  Prior: iter 5 hit 52% at seed 2032. With sigma ~ 7%, that could be\n"
+                "  noise above true 50%, or real ~52% signal. Re-run distinguishes.\n"
+                "  Hypothesis: if signal, second run lands 50-55%; if noise, anywhere."
             ),
-            "replacements": [("PST_SCALE = 1.0", "PST_SCALE = 0.9")],
+            "replacements": [('MOVE_ORDERING = "default"', 'MOVE_ORDERING = "mvv_lva"')],
         },
         {
-            "name": "mvv_lva_qs170",
+            "name": "rook_value_490",
             "description": (
-                "MOVE_ORDERING='mvv_lva' + QS_LIMIT=170: combine two near-misses.\n"
-                "  Round 1: mvv_lva alone: 52%. qs_limit=100: 54% (but slow).\n"
-                "  Hypothesis: better capture ordering + modest quiescence depth stack."
+                "R 479 -> 490 (+11cp): smaller rook bump than iter 9 (+16cp -> 54%).\n"
+                "  Hypothesis: minor pieces are very sensitive to value changes; even\n"
+                "  rooks may benefit from smaller perturbations to find a real edge."
+            ),
+            "replacements": [('"R": 479,', '"R": 490,')],
+        },
+        {
+            "name": "pawn_value_105",
+            "description": (
+                "P 100 -> 105 (+5cp): tiny pawn boost; pawn value is untouched so far.\n"
+                "  Pawn value underpins all material trade decisions. Sunfish's P:N\n"
+                "  ratio (1:2.8) is slightly low vs Stockfish (1:3.05); raising P\n"
+                "  brings the ratio closer.\n"
+                "  Hypothesis: small boost subtly improves trade evaluation."
+            ),
+            "replacements": [('"P": 100,', '"P": 105,')],
+        },
+        {
+            "name": "combo_qs150_rook495",
+            "description": (
+                "Combine QS_LIMIT=150 (iter 6: 54%) with R=495 (iter 9: 54%).\n"
+                "  These touch DIFFERENT mechanisms (search depth vs material value),\n"
+                "  unlike round 2 iter 8 (mvv_lva + qs170) which both affected search.\n"
+                "  Hypothesis: orthogonal improvements stack additively rather than\n"
+                "  fighting each other; expect 55-58% if both signals are real."
             ),
             "replacements": [
-                ('MOVE_ORDERING = "default"', 'MOVE_ORDERING = "mvv_lva"'),
-                ("QS_LIMIT = 219", "QS_LIMIT = 170"),
+                ("QS_LIMIT = 219", "QS_LIMIT = 150"),
+                ('"R": 479,', '"R": 495,'),
             ],
-        },
-        {
-            "name": "rook_value_495",
-            "description": (
-                "R 479 -> 495 (+16cp): small rook value increase.\n"
-                "  Round 1 showed major piece value changes hurt badly (-20cp on N/B).\n"
-                "  Hypothesis: rooks gain power as game opens; small boost aids endgame."
-            ),
-            "replacements": [('"R": 479,', '"R": 495,')],
-        },
-        {
-            "name": "draw_test_false",
-            "description": (
-                "DRAW_TEST False: skip repetition detection during search.\n"
-                "  Removes one check per node, speeding up search.\n"
-                "  Hypothesis: faster search reaches greater depth; engine finds more wins\n"
-                "  instead of voluntarily repeating positions."
-            ),
-            "replacements": [("DRAW_TEST = True", "DRAW_TEST = False")],
         },
     ]
 
     print("=" * 60)
-    print("AutoResearch round 2: 5 refined iterations")
+    print("AutoResearch round 3: 5 refined iterations (#11-15)")
     print(f"Batch: {BATCH_SIZE} games | Win threshold: {WIN_THRESHOLD_PCT}%")
     print("=" * 60)
 
-    for i, exp in enumerate(experiments, start=6):  # continue numbering from round 1
+    for i, exp in enumerate(experiments, start=11):
         print(f"\n{'='*60}")
-        print(f"ITERATION {i}/10  [{exp['name']}]")
+        print(f"ITERATION {i}/15  [{exp['name']}]")
         print(f"{'='*60}")
         print(f"{exp['description']}\n")
 
@@ -143,7 +150,7 @@ def main():
             print(f"  Config error: {exc} - skipping.")
             continue
 
-        seed = EVAL_SEED_BASE + (i - 6)
+        seed = EVAL_SEED_BASE + (i - 11)
         print(f"  Running {BATCH_SIZE}-game match (seed={seed})...")
         t0 = time.time()
         try:
@@ -181,7 +188,7 @@ def main():
         )
 
     print(f"\n{'='*60}")
-    print("Round 2 complete. See results.csv for full log.")
+    print("Round 3 complete. See results.csv for full log.")
 
 
 if __name__ == "__main__":
