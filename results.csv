@@ -11,3 +11,8 @@ timestamp,protocol_version,label_a,label_b,n_games,time_per_move,opening_plies,m
 2026-04-24 00:00:54,v1-2026-04,candidate_20260423-234012,sunfish_baseline,50,0.1,4,200,2035,10,24,16,36.0,123.7,0.2358,0.1942,50.4026,13.4337,1241.37,iteration=8 exp=mvv_lva_qs170 status=DISCARD
 2026-04-24 00:20:42,v1-2026-04,candidate_20260424-000054,sunfish_baseline,50,0.1,4,200,2036,16,12,22,54.0,131.0,0.1946,0.177,49.2148,2.0601,1188.0,iteration=9 exp=rook_value_495 status=DISCARD
 2026-04-24 00:36:58,v1-2026-04,candidate_20260424-002042,sunfish_baseline,50,0.1,4,200,2037,15,14,21,51.0,103.1,0.2043,0.1841,55.2929,3.4728,976.12,iteration=10 exp=draw_test_false status=DISCARD
+2026-04-24 19:02:02,v1-2026-04,candidate_20260424-184322,sunfish_baseline,50,0.1,4,200,2038,15,18,17,47.0,121.7,0.2223,0.1767,94.1738,5.1506,1119.72,iteration=11 exp=qs_limit_180 status=DISCARD
+2026-04-24 19:22:16,v1-2026-04,candidate_20260424-190202,sunfish_baseline,50,0.1,4,200,2039,11,23,16,38.0,121.8,0.2126,0.1981,12.402,78.304,1214.05,iteration=12 exp=mvv_lva_reseed status=DISCARD
+2026-04-24 19:40:32,v1-2026-04,candidate_20260424-192216,sunfish_baseline,50,0.1,4,200,2040,17,15,18,52.0,122.4,0.198,0.1757,42.7101,3.4197,1095.34,iteration=13 exp=rook_value_490 status=DISCARD
+2026-04-24 19:57:43,v1-2026-04,candidate_20260424-194032,sunfish_baseline,50,0.1,4,200,2041,20,17,13,53.0,117.3,0.1902,0.1776,18.6474,1.375,1031.38,iteration=14 exp=pawn_value_105 status=DISCARD
+2026-04-24 20:15:22,v1-2026-04,candidate_20260424-195743,sunfish_baseline,50,0.1,4,200,2042,19,17,14,52.0,118.4,0.1789,0.1953,6.0331,35.2213,1059.01,iteration=15 exp=combo_qs150_rook495 status=DISCARD
