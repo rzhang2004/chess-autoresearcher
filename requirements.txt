@@ -4,6 +4,9 @@
 # Week 3: autoresearch loop (search.py)
 anthropic>=0.40.0
 
-# Optional (Week 4+):
+# Week 4: plotting for experiment artifacts
+matplotlib>=3.5
+numpy>=1.20
+
+# Optional:
 #   pyyaml      — if best_config.yaml grows complex
-#   matplotlib  — for plotting experiment trends

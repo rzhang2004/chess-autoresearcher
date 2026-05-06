@@ -126,6 +126,11 @@ TIME_PER_MOVE = 0.1       # Seconds per move for iterative deepening.
 EARLY_EXIT_MARGIN = 0.8   # Stop ID early if next depth unlikely to complete.
 
 # ---------------------------------------------------------------------------
+# Algorithm toggles (Week 4+ — see program.md for rules).
+# ---------------------------------------------------------------------------
+ENABLE_NULL_MOVE = True   # Null-move pruning in Searcher.bound().
+
+# ---------------------------------------------------------------------------
 # Bundled snapshot used by engine.py. Do not reference directly from outside.
 # ---------------------------------------------------------------------------
 def get_config():
@@ -142,4 +147,5 @@ def get_config():
         "move_ordering": MOVE_ORDERING,
         "time_per_move": TIME_PER_MOVE,
         "early_exit_margin": EARLY_EXIT_MARGIN,
+        "enable_null_move": ENABLE_NULL_MOVE,
     }

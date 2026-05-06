@@ -30,8 +30,10 @@ public; security-by-obscurity isn't the point — reproducibility is.
 
 from __future__ import annotations
 
+import copy
 import csv
 import json
+import multiprocessing
 import os
 import random
 import time
@@ -400,6 +402,180 @@ def append_result_row(csv_path: str, summary: MatchSummary,
             summary.a_max_sec_per_move, summary.b_max_sec_per_move,
             summary.wall_seconds, notes,
         ])
+
+
+# ---------------------------------------------------------------------------
+# Multiprocessing helpers (Week 4+).
+#
+# The protocol is unchanged — same seed schedule, same per-game logic. Only
+# the wall-clock cost is reduced by playing independent games on multiple
+# cores. Each worker subprocess builds its own engines, so the module-level
+# _PST globals don't conflict across workers.
+# ---------------------------------------------------------------------------
+
+class _PSTIsolatedEngineMP:
+    """Same idea as search._PSTIsolatedEngine: snapshot a built engine's
+    PST/MATE globals and swap them in around each think() call so two
+    different-config engines can coexist within one worker process."""
+
+    def __init__(self, engine, pst, mate_lower, mate_upper):
+        self._engine = engine
+        self._pst = pst
+        self._mate_lower = mate_lower
+        self._mate_upper = mate_upper
+
+    @property
+    def cfg(self):
+        return self._engine.cfg
+
+    @cfg.setter
+    def cfg(self, value):
+        self._engine.cfg = value
+
+    def reset(self):
+        self._engine.reset()
+
+    def think(self, pos, history=(), time_budget=None):
+        prev_pst = _engine._PST
+        prev_lo = _engine._MATE_LOWER
+        prev_hi = _engine._MATE_UPPER
+        _engine._PST = self._pst
+        _engine._MATE_LOWER = self._mate_lower
+        _engine._MATE_UPPER = self._mate_upper
+        try:
+            return self._engine.think(pos, history, time_budget)
+        finally:
+            _engine._PST = prev_pst
+            _engine._MATE_LOWER = prev_lo
+            _engine._MATE_UPPER = prev_hi
+
+
+def _play_one_game_mp(task):
+    """Worker function for multiprocessing.Pool.
+
+    Receives picklable cfg dicts, builds engines locally, plays one game.
+    """
+    (candidate_cfg, baseline_cfg, game_idx, seed, time_per_move,
+     opening_plies, move_limit, label_a, label_b, a_is_white) = task
+
+    cand = _engine.build_engine(config_overrides=candidate_cfg)
+    cand_pst = copy.deepcopy(_engine._PST)
+    cand_lo, cand_hi = _engine._MATE_LOWER, _engine._MATE_UPPER
+
+    base = _engine.build_engine(config_overrides=baseline_cfg)
+    base_pst = copy.deepcopy(_engine._PST)
+    base_lo, base_hi = _engine._MATE_LOWER, _engine._MATE_UPPER
+
+    cand_iso = _PSTIsolatedEngineMP(cand, cand_pst, cand_lo, cand_hi)
+    base_iso = _PSTIsolatedEngineMP(base, base_pst, base_lo, base_hi)
+    cand_iso.cfg = dict(cand_iso.cfg, name=label_a)
+    base_iso.cfg = dict(base_iso.cfg, name=label_b)
+
+    white = cand_iso if a_is_white else base_iso
+    black = base_iso if a_is_white else cand_iso
+    return _play_one_game(white, black, game_idx, seed,
+                          time_per_move, opening_plies, move_limit)
+
+
+def run_match_parallel(
+    candidate_cfg: dict,
+    baseline_cfg: dict,
+    *,
+    label_a: str = "A",
+    label_b: str = "B",
+    n_games: int = DEFAULT_BATCH_SIZE,
+    time_per_move: float = DEFAULT_TIME_PER_MOVE,
+    opening_plies: int = DEFAULT_OPENING_PLIES,
+    move_limit: int = DEFAULT_MOVE_LIMIT,
+    seed: int = DEFAULT_SEED,
+    n_workers: int = 4,
+    log_path: Optional[str] = None,
+    verbose: bool = False,
+) -> MatchSummary:
+    """Parallel-execution variant of run_match() — same protocol, faster.
+
+    Plays n_games independent games across n_workers worker processes.
+    Per-game RNG is seeded by (seed, game_idx), preserving determinism.
+    Returns the same MatchSummary dataclass as run_match().
+    """
+    start_wall = time.time()
+    tasks = [
+        (candidate_cfg, baseline_cfg, g, seed, time_per_move,
+         opening_plies, move_limit, label_a, label_b, g % 2 == 0)
+        for g in range(n_games)
+    ]
+
+    games: List[GameResult]
+    if n_workers <= 1:
+        games = [_play_one_game_mp(t) for t in tasks]
+    else:
+        with multiprocessing.Pool(n_workers) as pool:
+            games = pool.map(_play_one_game_mp, tasks)
+
+    a_wins = b_wins = draws = 0
+    a_times: List[float] = []
+    b_times: List[float] = []
+    a_max_times: List[float] = []
+    b_max_times: List[float] = []
+    terminations: Counter = Counter()
+
+    for g, result in enumerate(games):
+        if result.result == "1-0":
+            winner = "A" if g % 2 == 0 else "B"
+        elif result.result == "0-1":
+            winner = "B" if g % 2 == 0 else "A"
+        else:
+            winner = "draw"
+        if winner == "A":
+            a_wins += 1
+        elif winner == "B":
+            b_wins += 1
+        else:
+            draws += 1
+        terminations[result.termination] += 1
+
+        if g % 2 == 0:
+            a_times.append(result.white_avg_sec_per_move)
+            b_times.append(result.black_avg_sec_per_move)
+            a_max_times.append(result.white_max_sec_per_move)
+            b_max_times.append(result.black_max_sec_per_move)
+        else:
+            a_times.append(result.black_avg_sec_per_move)
+            b_times.append(result.white_avg_sec_per_move)
+            a_max_times.append(result.black_max_sec_per_move)
+            b_max_times.append(result.white_max_sec_per_move)
+
+        if verbose:
+            print(f"  game {g+1:>3}/{n_games}: {result.result:<7} "
+                  f"{result.termination:<22} plies={result.plies:>3} "
+                  f"(A={a_wins} B={b_wins} D={draws})")
+
+    def _mean(xs):
+        return sum(xs) / len(xs) if xs else 0.0
+
+    a_win_rate = (a_wins + 0.5 * draws) / max(n_games, 1)
+    summary = MatchSummary(
+        protocol_version=PROTOCOL_VERSION,
+        label_a=label_a, label_b=label_b,
+        n_games=n_games,
+        time_per_move=time_per_move,
+        opening_plies=opening_plies,
+        move_limit=move_limit,
+        seed=seed,
+        a_wins=a_wins, b_wins=b_wins, draws=draws,
+        a_win_rate=round(a_win_rate, 4),
+        a_win_rate_pct=round(100.0 * a_win_rate, 2),
+        avg_plies=round(_mean([g.plies for g in games]), 1),
+        a_avg_sec_per_move=round(_mean(a_times), 4),
+        b_avg_sec_per_move=round(_mean(b_times), 4),
+        a_max_sec_per_move=round(max(a_max_times) if a_max_times else 0.0, 4),
+        b_max_sec_per_move=round(max(b_max_times) if b_max_times else 0.0, 4),
+        terminations=dict(terminations),
+        wall_seconds=round(time.time() - start_wall, 2),
+    )
+    if log_path is not None:
+        _write_match_log(log_path, summary, games)
+    return summary
 
 
 # ---------------------------------------------------------------------------

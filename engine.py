@@ -264,8 +264,10 @@ class Searcher:
 
         def moves():
             # Null-move pruning (at depth > 0, non-root, only if we have
-            # non-pawn material).
-            if depth > 0 and not root and any(c in pos.board for c in "RBNQ"):
+            # non-pawn material). Gated by cfg["enable_null_move"] for ablations.
+            if (self.cfg.get("enable_null_move", True)
+                    and depth > 0 and not root
+                    and any(c in pos.board for c in "RBNQ")):
                 yield None, -self.bound(pos.nullmove(), 1 - gamma, depth - 3, root=False)
             # Stand-pat at depth 0.
             if depth == 0:
