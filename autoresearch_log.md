@@ -1,8 +1,8 @@
 # AutoResearch Log — Chess Engine (Sunfish) Config Optimization
 
-**Project**: STAT 390, Ray Zhang  
-**Protocol**: v1-2026-04 | 50 games/batch | 0.1s/move | 4-ply random opening | seed varies  
-**Success criterion**: ≥55% win rate vs baseline AND avg ≤0.5s/move  
+**Project**: STAT 390, Ray Zhang
+**Protocol**: v1-2026-04 | 50 games/batch | 0.1s/move | 4-ply random opening | seed varies
+**Success criterion**: ≥55% win rate vs baseline AND avg ≤0.5s/move
 **Baseline** (Week 2, seed=2026): 54.0% mirror match, 99.0% vs random
 
 ---
@@ -22,7 +22,7 @@ Avg speed: 0.173–0.217s/move. One 128.6s outlier in the mirror match (known Su
 
 ## Week 3 — Optimization Loop (2026-04-23 to 2026-04-24)
 
-10 iterations run in two rounds of 5. All evaluated head-to-head against the locked baseline using `_PSTIsolatedEngine` (swaps module-level PST globals around each `think()` call to enable fair comparison in a single process).
+15 iterations run in three rounds of 5. All evaluated head-to-head against the locked baseline using `_PSTIsolatedEngine` (swaps module-level PST globals around each `think()` call to enable fair comparison in a single process).
 
 ### Round 1 — Broad Exploration
 
@@ -37,11 +37,11 @@ Avg speed: 0.173–0.217s/move. One 128.6s outlier in the mirror match (known Su
 | 5 | MOVE_ORDERING→mvv_lva | 18 | 16 | 16 | 52.0% | 0.271 | DISCARD |
 
 **Round 1 findings**:
-- **QS_LIMIT=100** was closest (54.0%) but avg 0.354s/move — 2× slower than baseline. Speed cost outweighed tactical gain at this threshold. Promising direction.
+- **QS_LIMIT=100** was closest (54.0%) but avg 0.354s/move — 2× slower than baseline. Speed cost outweighed tactical gain at this threshold.
 - **MOVE_ORDERING=mvv_lva** second-closest (52.0%). MVV-LVA capture ordering improves alpha-beta cutoffs but not enough alone.
-- **PST_SCALE=1.15** hurt (48%): more positional emphasis made play worse, suggesting Sunfish's baseline PST weighting is already near-optimal.
-- **Minor pieces +20cp** worst result (38%): large piece value changes create systematic positional misconceptions the engine can't resolve within the time budget. Piece values are highly sensitive.
-- **EVAL_ROUGHNESS=7** no improvement (49%): MTD-bi aspiration window was already precise enough.
+- **PST_SCALE=1.15** hurt (48%): more positional emphasis made play worse.
+- **Minor pieces +20cp** worst result (38%): large piece value changes create systematic positional misconceptions. Piece values are highly sensitive.
+- **EVAL_ROUGHNESS=7** no improvement (49%).
 
 ### Round 2 — Refined Exploration
 
@@ -56,48 +56,148 @@ Avg speed: 0.173–0.217s/move. One 128.6s outlier in the mirror match (known Su
 | 10 | DRAW_TEST→False | 15 | 14 | 21 | 51.0% | 0.204 | DISCARD |
 
 **Round 2 findings**:
-- **QS_LIMIT=150** tied the 54.0% of QS_LIMIT=100 but at 0.213s/move (vs 0.354) — much better speed profile. The tactical improvement is real but insufficient to clear 55% alone.
-- **Rook +16cp** also hit 54.0%: small value nudges are safer than large ones (round 1 showed +20cp on minors → 38%). Rooks may be slightly undervalued in closed middlegames.
+- **QS_LIMIT=150** matched the 54.0% of QS_LIMIT=100 but at 0.213s/move (vs 0.354) — much better speed profile.
+- **Rook +16cp** also hit 54.0%: small value nudges are safer than large ones.
 - **PST_SCALE=0.9 hurt** (45%): both directions of PST scaling hurt. Baseline 1.0 appears optimal.
-- **mvv_lva + QS_LIMIT=170 combined** was worst of round 2 (36%). The two changes interfere rather than stack — MVV-LVA reorders captures but deeper quiescence then evaluates them differently, creating inconsistency.
-- **DRAW_TEST=False** (51%): removing repetition detection from search neither helped nor hurt significantly. The speed saving was marginal.
+- **mvv_lva + QS_LIMIT=170 combined** was worst of round 2 (36%). The two changes interfere rather than stack.
+- **DRAW_TEST=False** (51%): removing repetition detection from search neither helped nor hurt significantly.
+
+### Round 3 — Validation
+
+**Goal**: Re-test the apparent near-misses at *fresh seeds* to distinguish real signal from sampling noise.
+
+| # | Config change | W | L | D | Win% | Avg s/mv | Decision |
+|---|--------------|---|---|---|------|---------|---------|
+| 11 | QS_LIMIT 219→180 | 15 | 18 | 17 | 47.0% | 0.222 | DISCARD |
+| 12 | MOVE_ORDERING→mvv_lva (re-seed) | 11 | 23 | 16 | 38.0% | 0.213 | DISCARD |
+| 13 | R 479→490 (+11cp) | 17 | 15 | 18 | 52.0% | 0.198 | DISCARD |
+| 14 | P 100→105 (+5cp) | 20 | 17 | 13 | 53.0% | 0.190 | DISCARD |
+| 15 | QS_LIMIT=150 + R=495 (combo) | 19 | 17 | 14 | 52.0% | 0.179 | DISCARD |
+
+**Round 3 findings — the validation cohort killed the apparent signals**:
+- **`mvv_lva` re-seeded fell from 52% → 38%** — its earlier near-miss was *noise*.
+- **`qs_limit_180` came in at 47%** — the QS_LIMIT 100 / 150 trend (both 54%) was *noise*.
+- **`rook_value_490` (+11cp) → 52%** — smaller version of the +16cp 54% result, still in the noise band.
+- **`pawn_value_105` (+5cp) → 53%** — the only previously-untouched parameter; modest result, also indistinguishable from noise.
+- **`combo_qs150_rook495` → 52%** — stacking two 54% candidates from different mechanisms produced no additivity.
+
+After round 3, **none of the 15 hand-curated single-parameter changes produces an effect distinguishable from sampling noise.**
 
 ---
 
-## Summary After 10 Iterations
+## Summary After 15 Iterations
 
-**KEEPs**: 0  
-**Best win rates**: 54.0% × 3 (QS_LIMIT=100, QS_LIMIT=150, R=495)  
-**Worst**: 36.0% (mvv_lva + QS_LIMIT=170 combined)
+**KEEPs**: 0 / 15
+**Win rate distribution**:
 
 ```
-Win rate distribution across 10 candidates:
-  36%  38%  45%  48%  49%  51%  52%  54%  54%  54%
-  ↑ worst                                  ↑ best (×3)
-  Baseline mirror: 54%
-  Threshold:       55%
+36  38  38  45  47  48  49  51  52  52  52  53  54  54  54
+↑ worst (×2)                                       ↑ best (×3)
+                Baseline mirror = 54
+                Threshold       = 55  (never cleared)
 ```
 
-The 55% threshold has not been cleared. Key structural observations:
+Median = 51%; mean = 49.0%. The empirical distribution is centered just below 50% and dispersed roughly ±8pp — nearly indistinguishable from a fair-coin null at 50 trials.
 
-1. **Baseline Sunfish parameters are near-optimal.** Every single-parameter change either hurt or produced a statistically indistinguishable result. This is consistent with Sunfish's decade of tuning history.
+Three structural observations:
 
-2. **Statistical noise is the binding constraint.** At 50 games, σ ≈ 7% win rate. To detect a +5% improvement at 80% power requires ~200 games. The three "54%" results could each be noise around 50% or signal around 54% — indistinguishable at N=50.
+1. **Baseline Sunfish parameters are near-optimal.** Single-axis perturbations either hurt or land within noise. Consistent with Sunfish's decade of tuning history.
+2. **Statistical noise is the binding constraint.** At 50 games, σ ≈ 7%. Detecting a +5pp effect at 80% power requires ~200 games — 4× more compute per evaluation.
+3. **Apparent near-misses fail validation runs.** Three "54%" results (QS_LIMIT 100, QS_LIMIT 150, R+16) all reverted to ≤52% when re-tested at fresh seeds.
 
-3. **QS_LIMIT and rook value are the only consistent near-misses.** Both independently reached 54%. These should be the priority for continued tuning.
+---
 
-4. **Parameter combinations backfire.** Round 2 iteration 8 showed that two individually near-neutral changes (mvv_lva at 52%, qs=170 near baseline) combined to produce the worst result (36%). Interaction effects dominate.
+## Week 4 — Controlled Experiments (2026-05-06)
+
+A formal pivot from "try things in the loop" to **structured causal evidence**. Three experiments, each varying ONE axis with all other config explicitly fixed and replicated across two seeds. Run via the new parallelised `evaluator.run_match_parallel()` (8 workers → 6.7× wall-clock speedup; full plan in 50 min vs 5h).
+
+The autoresearch contract was relaxed (per `program.md`) to allow controlled `engine.py` modifications behind config-flag gates. Experiment C exercises that path.
+
+See [`week4_controlled_experiment_set.md`](week4_controlled_experiment_set.md) for the full pre-registration; [`week4_results_matrix.csv`](week4_results_matrix.csv) for raw rows.
+
+### Experiment A — `QS_LIMIT` sweep (search axis, 5 levels × 2 seeds = 500 games)
+
+| Level | seed 4001 | seed 4002 | Mean | Std |
+|---|---:|---:|---:|---:|
+| qs_50 | 61% | 48% | 54.5% | 9.2 |
+| qs_100 | 40% | 60% | 50.0% | 14.1 |
+| qs_150 | 49% | 47% | 48.0% | 1.4 |
+| **qs_219 (baseline)** | **56%** | **57%** | **56.5%** | **0.7** |
+| qs_300 | 40% | 52% | 46.0% | 8.5 |
+
+No coherent dose-response curve. The null condition (candidate ≡ baseline) returned ~56.5%, well above the 50% it should average to over many runs.
+
+### Experiment B — `PST_SCALE` sweep (eval axis, 3 levels × 2 seeds = 300 games)
+
+| Level | seed 4001 | seed 4002 | Mean | Std |
+|---|---:|---:|---:|---:|
+| pst_0.7 | 57% | 43% | 50.0% | 9.9 |
+| **pst_1.0 (baseline)** | **54%** | **52%** | **53.0%** | **1.4** |
+| pst_1.3 | 43% | 52% | 47.5% | 6.4 |
+
+All three levels' confidence intervals overlap with each other and with 50%.
+
+### Experiment C — Null-move pruning ablation (algorithm axis, engine.py edit, 200 games)
+
+This required adding `ENABLE_NULL_MOVE: bool = True` to `config.py` and gating the null-move branch in `engine.Searcher.bound`. The change is single-axis, documented, protocol-preserving, and config-flag-defaulted to baseline.
+
+| Level | seed 4001 | seed 4002 | Mean | Std |
+|---|---:|---:|---:|---:|
+| **null_move_on (baseline)** | **61%** | **50%** | **55.5%** | **7.8** |
+| null_move_off | 53% | 42% | 47.5% | 7.8 |
+
+8pp drop in the predicted direction, but 95% CIs of the two levels overlap. The pre-registered hypothesis was a *much larger* effect; that prediction is partially falsified — either Sunfish's null-move pruning contributes less than expected, or the metric is too noisy to resolve it at N=50.
+
+### Cross-experiment null-condition pooling
+
+The three experiments collectively include **six baseline-vs-baseline runs** (qs_219 ×2, pst_1.0 ×2, null_move_on ×2). Pooled:
+
+```
+[56, 57, 54, 52, 61, 50]   →  mean = 55.0%,  std = 4.0%
+```
+
+**The 55% acceptance threshold equals the mean of the null condition.** Any candidate's "win" against baseline is statistically indistinguishable from the candidate-equals-baseline case at 50 games per evaluation.
+
+---
+
+## Cumulative Results — 35 Total Runs (15 search-loop + 20 controlled)
+
+```
+Win-rate distribution across all 35 candidate runs:
+
+36  38  38  40  40  42  43  43  45  47  47  48  48  49  49  50  50  51  52  52  52  52  52  53  53  54  54  54  56  57  57  60  61  61  61
+                        median (51) ↑                          baseline-vs-baseline pooled mean = 55%
+```
+
+**Total KEEPs: 0.** The dominant failure mode is **Signal Failure** under the four-category Week 4 taxonomy — the loop runs cleanly but cannot produce interpretable evidence at the current N=50 batch size.
+
+Full taxonomy breakdown for all 35 runs:
+
+| Category | Count | Examples |
+|---|---:|---|
+| **Signal Failure** | 32 | All 15 Round 1-3 runs + most controlled levels (in 38-57% noise band) |
+| **Evaluation Leakage** | 2 | Round-1 #2 (qs_limit_100 spent 0.354s/move — unfair compute share); Round-2 #8 |
+| **Code Instability** | 1 | Python-3.12 tuple-seed bug in `evaluator.py` (fixed in Week 3 setup) |
+| **Agent Misbehavior** | 0 | All experiments hand-curated; no agent went rogue |
+
+---
+
+## Open Uncertainty
+
+1. **Is the metric's A-side bias (~55% null mean) real or sample-bound?** Six replicates is not enough to characterize. To decide: run 20+ baseline-vs-baseline replicates.
+2. **Does null-move pruning contribute more than 8pp at higher N?** The Experiment C effect is in the predicted direction but underwhelming. Re-run at N=200 to resolve.
+3. **Are there any single-axis changes outside the noise band?** Across 35 runs, no. But 35 is sparse coverage of the config space.
 
 ---
 
 ## Next Steps
 
-Priority hypotheses for round 3:
+The lesson from 35 runs is unambiguous: **N=50 is too small to learn anything**. The most impactful change is to the *evaluation protocol*, not the *search loop*:
 
-| Idea | Rationale |
-|------|----------|
-| Run QS_LIMIT=150 + R=495 with N=100 games | Confirm signal vs noise for both near-misses |
-| QS_LIMIT=175 | Narrow the 150–219 range further |
-| R=490 (+11cp) | Even smaller rook nudge |
-| P=105 (+5cp) | Pawns slightly up — passed pawn endgames |
-| Lower EARLY_EXIT_MARGIN to 0.7 | More time used per move within budget |
+| Priority | Action | Rationale |
+|---|---|---|
+| 1 | Bump batch size to N=200 | σ drops 7% → 3.5%; threshold becomes ~1.4σ above null (currently 0.7σ). |
+| 2 | Always run ≥3 seed replicates per level | Single-seed reads are uninterpretable per the Week 4 evidence. |
+| 3 | Add power analysis to `search.py` | Reject any KEEP whose CI overlaps the null condition's CI. |
+| 4 | Re-test `null_move_off` at N=200 | Highest-effect-size candidate from controlled set; deserves resolution. |
+| 5 | Plot raw per-game outcomes, not just batch means | Visualize game-length and termination-reason distributions for under-the-mean diagnosis. |
