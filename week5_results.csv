@@ -1,0 +1,11 @@
+iteration,experiment,hypothesis,changed_param,old_value,new_value,seed,n_games,win_pct,wins,losses,draws,avg_sec_per_move,avg_plies,wall_seconds,decision,rollback_reason
+17,table_size_20M,"Larger transposition table caches more positions, improving move quality at same time budget",TABLE_SIZE,10_000_000,20_000_000,5001,50,42.0,14,22,14,0.193,118.0,166.7,DISCARD,win_pct=42.0% < 55.0%
+18,table_size_5M,"Smaller TT tests whether baseline is already optimal; if 5M hurts, TT size matters for strength",TABLE_SIZE,10_000_000,5_000_000,5002,50,50.0,19,19,12,0.197,123.3,177.4,DISCARD,win_pct=50.0% < 55.0%
+19,eval_roughness_20,Wider MTD-bi window reduces re-searches; engine reaches same depth with fewer iterations,EVAL_ROUGHNESS,13,20,5003,50,50.0,19,19,12,0.1933,108.6,149.7,DISCARD,win_pct=50.0% < 55.0%
+20,eval_roughness_5,Narrower MTD-bi window gives more precise eval; tradeoff is more re-searches per depth,EVAL_ROUGHNESS,13,5,5004,50,54.0,22,18,10,0.1996,115.4,156.3,DISCARD,win_pct=54.0% < 55.0%
+21,pawn_pst_center,Boosting d4/e4/d5/e5 pawn squares by +15cp encourages central pawn play,PST_OVERRIDES[P],None,center_boosted,5005,50,44.0,15,21,14,0.2113,105.6,159.2,DISCARD,win_pct=44.0% < 55.0%
+22,knight_pst_central,Boosting knight center squares (d4/e4/d5/e5) by +10cp rewards knight centralization,PST_OVERRIDES[N],None,center_boosted,5006,50,47.0,15,18,17,0.1861,104.4,158.4,DISCARD,win_pct=47.0% < 55.0%
+23,bishop_value_330,Small bishop boost (+10cp) reflects bishop-pair advantage in open positions,PIECE_VALUES[B],320,330,5007,50,51.0,19,18,13,0.1902,124.5,167.2,DISCARD,win_pct=51.0% < 55.0%
+24,queen_value_940,Small queen boost (+11cp) discourages premature queen trades,PIECE_VALUES[Q],929,940,5008,50,44.0,16,22,12,0.1918,112.3,155.4,DISCARD,win_pct=44.0% < 55.0%
+25,early_exit_0.95,Higher margin means engine tries next ID depth more often; more search = better moves,EARLY_EXIT_MARGIN,0.8,0.95,5009,50,51.0,17,16,17,0.2189,121.5,202.1,DISCARD,win_pct=51.0% < 55.0%
+26,combo_table20M_roughness20,Stack two orthogonal changes: larger TT (memory axis) + wider aspiration (search axis),TABLE_SIZE + EVAL_ROUGHNESS,10M + 13,20M + 20,5010,50,46.0,17,21,12,0.1937,117.0,176.1,DISCARD,win_pct=46.0% < 55.0%

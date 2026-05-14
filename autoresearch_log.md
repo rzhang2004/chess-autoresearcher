@@ -190,14 +190,74 @@ Full taxonomy breakdown for all 35 runs:
 
 ---
 
+## Week 5 — Autonomous Block (2026-05-13)
+
+10 iterations (#17--#26) exploring 5 previously-untouched parameter axes. All run via `run_week5_block.py` with `run_match_parallel` (8 workers, ~2.8 min/match). Total wall time: 27.8 min.
+
+Full details: [`week5_experiment_log.md`](week5_experiment_log.md) | [`week5_results.csv`](week5_results.csv) | [`week5_metric_trajectory.png`](week5_metric_trajectory.png)
+
+### Results Table
+
+| # | Experiment | Changed Param | Old → New | Win% | W-L-D | s/move | Decision |
+|---|-----------|--------------|-----------|-----:|------:|-------:|----------|
+| 17 | table_size_20M | TABLE_SIZE | 10M → 20M | 42.0 | 14-22-14 | 0.193 | DISCARD |
+| 18 | table_size_5M | TABLE_SIZE | 10M → 5M | 50.0 | 19-19-12 | 0.197 | DISCARD |
+| 19 | eval_roughness_20 | EVAL_ROUGHNESS | 13 → 20 | 50.0 | 19-19-12 | 0.193 | DISCARD |
+| 20 | eval_roughness_5 | EVAL_ROUGHNESS | 13 → 5 | **54.0** | 22-18-10 | 0.200 | DISCARD |
+| 21 | pawn_pst_center | PST_OVERRIDES[P] | None → boosted | 44.0 | 15-21-14 | 0.211 | DISCARD |
+| 22 | knight_pst_central | PST_OVERRIDES[N] | None → boosted | 47.0 | 15-18-17 | 0.186 | DISCARD |
+| 23 | bishop_value_330 | PIECE_VALUES[B] | 320 → 330 | 51.0 | 19-18-13 | 0.190 | DISCARD |
+| 24 | queen_value_940 | PIECE_VALUES[Q] | 929 → 940 | 44.0 | 16-22-12 | 0.192 | DISCARD |
+| 25 | early_exit_0.95 | EARLY_EXIT_MARGIN | 0.8 → 0.95 | 51.0 | 17-16-17 | 0.219 | DISCARD |
+| 26 | combo_table20M_roughness20 | TABLE_SIZE+EVAL_ROUGHNESS | 10M+13 → 20M+20 | 46.0 | 17-21-12 | 0.194 | DISCARD |
+
+**KEEPs: 0 / 10 | DISCARDs: 10 / 10 | CRASHes: 0 / 10**
+
+### Week 5 Findings
+
+1. **TABLE_SIZE** (iters 17-18): Doubling TT hurt (42%); halving was neutral (50%). Baseline 10M is at or near optimal.
+2. **EVAL_ROUGHNESS** (iters 19-20): Wider window neutral (50%); narrower window was best-in-block (54%) but still within noise band.
+3. **PST_OVERRIDES** (iters 21-22): Both pawn and knight center-boost overrides hurt (44%, 47%). Confirms PST modifications are the most reliably harmful change category.
+4. **Piece values** (iters 23-24): Bishop +10cp neutral (51%); queen +11cp hurt (44%). Small piece-value nudges remain in the noise band.
+5. **EARLY_EXIT_MARGIN** (iter 25): 0.95 was neutral (51%) despite 13% more time per move. Combined with iter 16's 0.6 → 41%, the parameter matters only at extremes.
+6. **Combination** (iter 26): TABLE_SIZE 20M + EVAL_ROUGHNESS 20 produced 46% — worse than either alone. Combinations continue to interfere rather than stack.
+
+### Win-Rate Distribution (Week 5 only)
+
+```
+42  44  44  46  47  50  50  51  51  54
+Mean = 47.9%  Std = 3.7pp  Best = 54%
+```
+
+---
+
+## Cumulative Results — 46 Total Runs
+
+```
+All 46 evaluation runs (16 search-loop + 20 controlled + 10 Week 5):
+
+36 38 38 40 40 42 42 43 43 44 44 44 45 46 47 47 47 48 49 50 50 50 50
+51 51 51 51 52 52 52 52 52 53 53 54 54 54 54 54 56 57 57 60 61 61 61
+
+Median = 50.5%    Mean = 49.9%    Std = 6.1pp
+Baseline-vs-baseline null mean = 55.0% (Week 4)
+Threshold = 55%
+
+Total KEEPs: 0 / 46
+```
+
+The full 46-run distribution is centered at ~50% with σ ≈ 6pp, consistent with a pure-noise model where no config change has any real effect. The 3 highest scores (61%) are all from baseline-vs-baseline null-condition runs.
+
+---
+
 ## Next Steps
 
-The lesson from 35 runs is unambiguous: **N=50 is too small to learn anything**. The most impactful change is to the *evaluation protocol*, not the *search loop*:
+The lesson from 46 runs is reinforced: **N=50 is too small, and Sunfish's config is near-optimal**. Further config tuning at this batch size will not produce credible results.
 
 | Priority | Action | Rationale |
 |---|---|---|
-| 1 | Bump batch size to N=200 | σ drops 7% → 3.5%; threshold becomes ~1.4σ above null (currently 0.7σ). |
-| 2 | Always run ≥3 seed replicates per level | Single-seed reads are uninterpretable per the Week 4 evidence. |
-| 3 | Add power analysis to `search.py` | Reject any KEEP whose CI overlaps the null condition's CI. |
-| 4 | Re-test `null_move_off` at N=200 | Highest-effect-size candidate from controlled set; deserves resolution. |
-| 5 | Plot raw per-game outcomes, not just batch means | Visualize game-length and termination-reason distributions for under-the-mean diagnosis. |
+| 1 | Bump batch size to N=200 | σ drops 7% → 3.5%; threshold becomes ~1.4σ above null. |
+| 2 | Always run ≥3 seed replicates per level | Single-seed reads are uninterpretable. |
+| 3 | Target algorithmic changes (LMR, killer heuristic) | Engine-level changes are more likely to produce detectable effects than config knobs. |
+| 4 | Re-test `eval_roughness_5` at N=200 | Best Week 5 candidate; deserves resolution. |
+| 5 | Consider a different success metric | Win rate at N=50 may not be the right metric for optimization at this level. |
